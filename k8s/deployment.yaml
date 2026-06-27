@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oneulro-server
+  labels:
+    app: oneulro-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oneulro-server
+  template:
+    metadata:
+      labels:
+        app: oneulro-server
+    spec:
+      nodeSelector:
+        node-role: master  # Master Node에 배포
+      containers:
+      - name: oneulro-server
+        image: ${DOCKER_REGISTRY}/oneulro-server:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oneulro-server
+spec:
+  selector:
+    app: oneulro-server
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
