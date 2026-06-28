@@ -18,7 +18,7 @@ spec:
         node-role: master  # Master Node에 배포
       containers:
       - name: oneulro-server
-        image: ${DOCKER_REGISTRY}/oneulro-server:${IMAGE_TAG}
+        image: ${DOCKER_REGISTRY}:${IMAGE_TAG}
         ports:
         - containerPort: 8000
         resources:
@@ -30,13 +30,13 @@ spec:
             cpu: "100m"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /api/health
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
+            path: /api/health
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -52,4 +52,5 @@ spec:
     - protocol: TCP
       port: 8000
       targetPort: 8000
-  type: ClusterIP
+      nodePort: 30800
+  type: NodePort

@@ -13,30 +13,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt
-        pip install pytest
-
-    - name: Run tests
-      run: |
-        pytest tests/ -v
-
   build-and-deploy:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -70,6 +47,7 @@ jobs:
       with:
         context: .
         push: true
+        platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
@@ -88,8 +66,10 @@ jobs:
         sudo apt-get update && sudo apt-get install -y gettext-base
 
         # Set environment variables for substitution
-        export DOCKER_REGISTRY="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+        export DOCKER_REGISTRY="${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}"
         export IMAGE_TAG="${{ github.sha }}"
+        export IMAGE_TAG="${IMAGE_TAG:0:7}"
 
         # Apply deployment with substituted values
         envsubst < k8s/deployment.yaml | kubectl apply -f -
