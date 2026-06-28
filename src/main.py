@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 import redis
+from src.routers.naeilro import router as naeilro_router
 
 app = FastAPI(title="Oneulro API", version="0.1.0")
 
@@ -120,3 +121,4 @@ async def health_all():
     }
 
 app.include_router(api_router)
+app.include_router(naeilro_router, prefix="/api")

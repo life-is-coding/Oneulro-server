@@ -46,6 +46,11 @@ spec:
             secretKeyRef:
               name: redis-secret
               key: password
+        - name: TOUR_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: tour-api-secret
+              key: service-key
         resources:
           limits:
             memory: "256Mi"
