@@ -10,4 +10,4 @@ data:
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
   REDIS_USERNAME: "oneulro"
-  KAKAO_REDIRECT_URI: "https://161.33.31.75.nip.io/login/kakao/callback"
+  KAKAO_REDIRECT_URI: "http://161.33.31.75.nip.io/login/kakao/callback"
