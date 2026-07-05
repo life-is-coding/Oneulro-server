@@ -21,26 +21,16 @@ spec:
         image: ${DOCKER_REGISTRY}:${IMAGE_TAG}
         ports:
         - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: server-config
         env:
-        - name: DB_HOST
-          value: "postgres"
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_NAME
-          value: "oneulro"
-        - name: DB_USER
-          value: "oneulro"
+        # Secrets (민감한 정보만)
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: db-secret
               key: password
-        - name: REDIS_HOST
-          value: "redis"
-        - name: REDIS_PORT
-          value: "6379"
-        - name: REDIS_USERNAME
-          value: "oneulro"
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -66,8 +56,6 @@ spec:
             secretKeyRef:
               name: kakao-secret
               key: client-secret
-        - name: KAKAO_REDIRECT_URI
-          value: "https://161.33.31.75.nip.io/login/kakao/callback"
         resources:
           limits:
             memory: "256Mi"

@@ -71,6 +71,9 @@ jobs:
         export IMAGE_TAG="${{ github.sha }}"
         export IMAGE_TAG="${IMAGE_TAG:0:7}"
 
+        # Apply ConfigMap first
+        kubectl apply -f k8s/configmap.yaml
+
         # Apply deployment with substituted values
         envsubst < k8s/deployment.yaml | kubectl apply -f -
 
