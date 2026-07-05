@@ -1,11 +1,15 @@
 import os
-from urllib.parse import quote_plus
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 import redis
+from src.db import engine, DB_HOST, DB_NAME
 from src.routers.naeilro import router as naeilro_router
+from src.routers.auth import router as auth_router
+from src.routers.users import router as users_router
+from src.routers.courses import router as courses_router
+from src.routers.search_preset import router as search_preset_router
 
 app = FastAPI(title="Oneulro API", version="0.1.0")
 
@@ -17,18 +21,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Database connection
-DB_HOST = os.getenv("DB_HOST", "postgres")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "oneulro")
-DB_USER = os.getenv("DB_USER", "oneulro")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-
-# URL encode password to handle special characters
-encoded_password = quote_plus(DB_PASSWORD)
-DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # Redis connection
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
@@ -60,6 +52,8 @@ async def health():
 @api_router.get("/health/db")
 async def health_db():
     """Database 연결 확인"""
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Database driver not available")
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
@@ -122,3 +116,7 @@ async def health_all():
 
 app.include_router(api_router)
 app.include_router(naeilro_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(courses_router, prefix="/api")
+app.include_router(search_preset_router, prefix="/api")
