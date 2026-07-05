@@ -51,6 +51,23 @@ spec:
             secretKeyRef:
               name: tour-api-secret
               key: service-key
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: secret
+        - name: KAKAO_REST_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kakao-secret
+              key: rest-api-key
+        - name: KAKAO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kakao-secret
+              key: client-secret
+        - name: KAKAO_REDIRECT_URI
+          value: "https://161.33.31.75.nip.io/login/kakao/callback"
         resources:
           limits:
             memory: "256Mi"
