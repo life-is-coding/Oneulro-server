@@ -138,6 +138,8 @@ async def recommend_course(
         {
             "day": i + 1,
             "city": dest["name"],
+            "lat": dest["map_y"],
+            "lng": dest["map_x"],
             "attractions": attractions,
         }
         for i, (dest, attractions) in enumerate(zip(destinations, attraction_lists))

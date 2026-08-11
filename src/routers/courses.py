@@ -14,12 +14,16 @@ class AttractionItem(BaseModel):
     addr: Optional[str] = None
     image: Optional[str] = None
     category: Optional[str] = None
+    mapx: Optional[str] = None
+    mapy: Optional[str] = None
 
 
 class DayItem(BaseModel):
     day: Optional[int] = None
     day_number: Optional[int] = None
     city: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     attractions: list[AttractionItem] = []
 
 

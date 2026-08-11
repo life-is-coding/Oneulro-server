@@ -82,26 +82,38 @@ def create_course(user_id: int, title: str, departure_station: str, total_days: 
             day_number = day.get("day") or day.get("day_number", 1)
             row = conn.execute(
                 text("""
-                    INSERT INTO oneulro.course_stop (course_id, day_number, sequence, station_name)
-                    VALUES (:course_id, :day_number, :sequence, :station_name)
+                    INSERT INTO oneulro.course_stop
+                        (course_id, day_number, sequence, station_name, lat, lng)
+                    VALUES (:course_id, :day_number, :sequence, :station_name, :lat, :lng)
                     RETURNING stop_id
                 """),
-                {"course_id": course_id, "day_number": day_number, "sequence": day_number, "station_name": day.get("city", "")},
+                {
+                    "course_id": course_id,
+                    "day_number": day_number,
+                    "sequence": 1,
+                    "station_name": day.get("city", ""),
+                    "lat": day.get("lat"),
+                    "lng": day.get("lng"),
+                },
             ).one()
             stop_id = row[0]
 
-            for attraction in day.get("attractions", []):
+            for place_sequence, attraction in enumerate(day.get("attractions", []), start=1):
                 conn.execute(
                     text("""
-                        INSERT INTO oneulro.place (stop_id, tour_content_id, name, category, address, image_url)
-                        VALUES (:stop_id, :tour_content_id, :name, :category, :address, :image_url)
+                        INSERT INTO oneulro.place
+                            (stop_id, name, category, address, lat, lng, sequence, image_url)
+                        VALUES
+                            (:stop_id, :name, :category, :address, :lat, :lng, :sequence, :image_url)
                     """),
                     {
                         "stop_id": stop_id,
-                        "tour_content_id": str(attraction.get("contentid", "")),
                         "name": attraction.get("title", ""),
                         "category": attraction.get("category", ""),
                         "address": attraction.get("addr", ""),
+                        "lat": attraction.get("mapy"),
+                        "lng": attraction.get("mapx"),
+                        "sequence": place_sequence,
                         "image_url": attraction.get("image", ""),
                     },
                 )

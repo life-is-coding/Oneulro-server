@@ -10,6 +10,7 @@ from src.routers.auth import router as auth_router
 from src.routers.users import router as users_router
 from src.routers.courses import router as courses_router
 from src.routers.search_preset import router as search_preset_router
+from src.routers.weather import router as weather_router
 
 app = FastAPI(title="Oneulro API", version="0.1.0")
 
@@ -120,3 +121,4 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(courses_router, prefix="/api")
 app.include_router(search_preset_router, prefix="/api")
+app.include_router(weather_router, prefix="/api")
