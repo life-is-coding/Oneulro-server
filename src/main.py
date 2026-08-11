@@ -3,8 +3,9 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-import redis
 from src.db import engine, DB_HOST, DB_NAME
+from src.services.redis_connection import check_redis_connection, create_redis_client
+import redis
 from src.routers.naeilro import router as naeilro_router
 from src.routers.auth import router as auth_router
 from src.routers.users import router as users_router
@@ -24,19 +25,9 @@ app.add_middleware(
 )
 
 # Redis connection
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_USERNAME = os.getenv("REDIS_USERNAME", "oneulro")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
-
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    username=REDIS_USERNAME,
-    password=REDIS_PASSWORD,
-    decode_responses=True,
-    socket_connect_timeout=5
-)
+redis_client = create_redis_client()
 
 # API Router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -72,14 +63,7 @@ async def health_db():
 async def health_redis():
     """Redis 연결 확인"""
     try:
-        redis_client.ping()
-        info = redis_client.info("server")
-        return {
-            "status": "connected",
-            "type": "Redis",
-            "host": REDIS_HOST,
-            "version": info.get("redis_version", "unknown")
-        }
+        return check_redis_connection(redis_client)
     except redis.RedisError as e:
         raise HTTPException(status_code=503, detail=f"Redis connection failed: {str(e)}")
 
@@ -99,8 +83,7 @@ async def health_all():
 
     # Redis 체크
     try:
-        redis_client.ping()
-        redis_status = {"status": "connected", "host": REDIS_HOST}
+        redis_status = check_redis_connection(redis_client)
     except Exception as e:
         redis_status["error"] = str(e)
 

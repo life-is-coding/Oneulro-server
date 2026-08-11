@@ -17,10 +17,10 @@ def _get_service_key() -> str:
 
 def _redis_client() -> redis_lib.Redis:
     return redis_lib.Redis(
-        host=os.getenv("REDIS_HOST", "redis"),
+        host=os.getenv("REDIS_HOST", "localhost"),
         port=int(os.getenv("REDIS_PORT", "6379")),
-        username=os.getenv("REDIS_USERNAME", "oneulro"),
-        password=os.getenv("REDIS_PASSWORD", ""),
+        username=os.getenv("REDIS_USERNAME") or None,
+        password=os.getenv("REDIS_PASSWORD") or None,
         decode_responses=True,
         socket_connect_timeout=2,
     )
