@@ -1,13 +1,13 @@
 import json
 import math
-import os
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
-import redis
 
+from src.core.config import get_settings
+from src.core.redis import get_redis_client
 
 KST = ZoneInfo("Asia/Seoul")
 KMA_FORECAST_URL = (
@@ -71,20 +71,9 @@ def latest_base_datetime(now: datetime | None = None) -> datetime:
     return yesterday.replace(hour=23, minute=0, second=0, microsecond=0)
 
 
-def _redis_client() -> redis.Redis:
-    return redis.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        username=os.getenv("REDIS_USERNAME") or None,
-        password=os.getenv("REDIS_PASSWORD") or None,
-        decode_responses=True,
-        socket_connect_timeout=2,
-    )
-
-
 def _cache_get(key: str) -> dict[str, Any] | None:
     try:
-        raw = _redis_client().get(key)
+        raw = get_redis_client().get(key)
         return json.loads(raw) if raw else None
     except Exception:
         return None
@@ -92,7 +81,7 @@ def _cache_get(key: str) -> dict[str, Any] | None:
 
 def _cache_set(key: str, value: dict[str, Any]) -> None:
     try:
-        _redis_client().setex(key, CACHE_TTL_SECONDS, json.dumps(value, ensure_ascii=False))
+        get_redis_client().setex(key, CACHE_TTL_SECONDS, json.dumps(value, ensure_ascii=False))
     except Exception:
         pass
 
@@ -126,7 +115,7 @@ def _normalize(items: list[dict[str, Any]], base: datetime) -> dict[str, Any]:
 
 
 async def fetch_weather(lat: float, lng: float) -> dict[str, Any]:
-    auth_key = os.getenv("KMA_API_KEY", "").strip()
+    auth_key = get_settings().KMA_API_KEY.strip()
     if not auth_key:
         raise WeatherServiceError("KMA_API_KEY 환경변수가 설정되지 않았습니다")
 

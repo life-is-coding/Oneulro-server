@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 
+from src.dependencies import get_current_user
 from src.services.kakao_auth import exchange_code_for_token, fetch_kakao_profile
-from src.services.session import create_session_token, decode_session_token
+from src.services.session import create_session_token
 from src.repositories.user_repo import upsert_user, clear_refresh_token, soft_delete_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,44 +40,24 @@ async def kakao_callback(body: KakaoCallbackRequest):
 
 
 @router.get("/me")
-async def me(authorization: Optional[str] = Header(None)):
+async def me(user=Depends(get_current_user)):
     """JWT 토큰 유효성 검증 및 사용자 정보 반환"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="토큰이 없습니다")
-
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = decode_session_token(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
-
     return {
-        "id": payload.get("sub"),
-        "nickname": payload.get("nickname"),
-        "profile_image_url": payload.get("profile_image_url"),
+        "id": user.get("sub"),
+        "nickname": user.get("nickname"),
+        "profile_image_url": user.get("profile_image_url"),
     }
 
 
-def _require_auth(authorization: Optional[str]) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="토큰이 없습니다")
-    try:
-        return decode_session_token(authorization.removeprefix("Bearer "))
-    except Exception:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
-
-
 @router.post("/logout")
-async def logout(authorization: Optional[str] = Header(None)):
+async def logout(user=Depends(get_current_user)):
     """로그아웃 — DB의 refresh_token 삭제"""
-    payload = _require_auth(authorization)
-    clear_refresh_token(int(payload["sub"]))
+    clear_refresh_token(int(user["sub"]))
     return {"message": "로그아웃 되었습니다"}
 
 
 @router.delete("/me")
-async def delete_me(authorization: Optional[str] = Header(None)):
+async def delete_me(user=Depends(get_current_user)):
     """회원탈퇴 — soft delete"""
-    payload = _require_auth(authorization)
-    soft_delete_user(int(payload["sub"]))
+    soft_delete_user(int(user["sub"]))
     return {"message": "회원탈퇴가 완료되었습니다"}

@@ -1,14 +1,15 @@
-import os
 import time
 
 import jwt
+
+from src.core.config import get_settings
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRES_SECONDS = 60 * 60 * 24 * 30  # 30일
 
 
 def _secret() -> str:
-    secret = os.getenv("JWT_SECRET", "")
+    secret = get_settings().JWT_SECRET
     if not secret:
         raise RuntimeError("JWT_SECRET 환경변수가 설정되지 않았습니다")
     return secret

@@ -3,25 +3,12 @@ import time
 import uuid
 from typing import Any
 
-import redis
-
-
-def create_redis_client() -> redis.Redis:
-    """Cloud Memorystore 무인증 구성과 Redis ACL 구성을 모두 지원한다."""
-    return redis.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        username=os.getenv("REDIS_USERNAME") or None,
-        password=os.getenv("REDIS_PASSWORD") or None,
-        decode_responses=True,
-        socket_connect_timeout=5,
-        socket_timeout=5,
-    )
+from src.core.redis import get_redis_client
 
 
 def check_redis_connection(client: Any | None = None) -> dict:
     """PING과 임시 키 SET/GET/DELETE로 실제 읽기·쓰기를 검증한다."""
-    redis_client = client or create_redis_client()
+    redis_client = client or get_redis_client()
     test_key = f"health:redis:{uuid.uuid4().hex}"
     test_value = uuid.uuid4().hex
     started_at = time.perf_counter()
@@ -34,7 +21,6 @@ def check_redis_connection(client: Any | None = None) -> dict:
         deleted_ok = redis_client.get(test_key) is None
         info = redis_client.info("server")
     finally:
-        # 중간 단계에서 실패해도 TTL이 30초라 임시 키가 자동 제거된다.
         pass
 
     return {

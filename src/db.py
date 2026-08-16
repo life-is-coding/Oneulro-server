@@ -1,13 +1,16 @@
-import os
 from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine
 
-DB_HOST = os.getenv("DB_HOST", "postgres")
-DB_NAME = os.getenv("DB_NAME", "oneulro")
-DB_USER = os.getenv("DB_USER", "oneulro")
-DB_PASSWORD = quote_plus(os.getenv("DB_PASSWORD", ""))
-DB_PORT = os.getenv("DB_PORT", "5432")
+from src.core.config import get_settings
+
+settings = get_settings()
+
+DB_HOST = settings.DB_HOST
+DB_NAME = settings.DB_NAME
+DB_USER = settings.DB_USER
+DB_PASSWORD = quote_plus(settings.DB_PASSWORD)
+DB_PORT = settings.DB_PORT
 
 if DB_HOST.startswith("/cloudsql/"):
     _DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@/{DB_NAME}?host={DB_HOST}"

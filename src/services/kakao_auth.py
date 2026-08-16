@@ -1,7 +1,7 @@
-import os
-
 import httpx
 from fastapi import HTTPException
+
+from src.core.config import get_settings
 
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 KAKAO_USER_ME_URL = "https://kapi.kakao.com/v2/user/me"
@@ -9,9 +9,10 @@ KAKAO_USER_ME_URL = "https://kapi.kakao.com/v2/user/me"
 
 async def exchange_code_for_token(code: str) -> dict:
     """카카오 인가 코드를 액세스 토큰으로 교환"""
-    client_id = os.getenv("KAKAO_REST_API_KEY", "")
-    client_secret = os.getenv("KAKAO_CLIENT_SECRET", "")
-    redirect_uri = os.getenv("KAKAO_REDIRECT_URI", "")
+    settings = get_settings()
+    client_id = settings.KAKAO_REST_API_KEY
+    client_secret = settings.KAKAO_CLIENT_SECRET
+    redirect_uri = settings.KAKAO_REDIRECT_URI
 
     if not client_id or not redirect_uri:
         raise HTTPException(status_code=500, detail="카카오 로그인 설정이 누락되었습니다")
