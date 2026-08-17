@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.core.config import get_settings
 from src.core.redis import get_redis_client
 from src.db import engine
-from src.services.redis_connection import check_redis_connection
+from src.adapter.outbound.redis_connection import check_redis_connection
 
 router = APIRouter(prefix="/health", tags=["health"])
 

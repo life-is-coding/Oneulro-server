@@ -4,8 +4,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.dependencies import get_current_user
-from src.repositories.preset_repo import get_preset, upsert_preset
+from src.core.dependencies import get_current_user
+from src.adapter.outbound.preset_repo import get_preset, upsert_preset
 
 router = APIRouter(prefix="/search-preset", tags=["search-preset"])
 

@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging import RequestLoggingMiddleware
 from src.core.redis import close_redis_client, get_redis_client
-from src.routers import auth, courses, naeilro, search_preset, users, weather
-from src.routers.health import router as health_router
+from src.adapter.inbound import auth, courses, naeilro, search_preset, users, weather
+from src.adapter.inbound.health import router as health_router
 
 
 @asynccontextmanager

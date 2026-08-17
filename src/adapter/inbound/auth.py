@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 
-from src.dependencies import get_current_user
-from src.services.kakao_auth import exchange_code_for_token, fetch_kakao_profile
-from src.services.session import create_session_token
-from src.repositories.user_repo import upsert_user, clear_refresh_token, soft_delete_user
+from src.core.dependencies import get_current_user
+from src.adapter.outbound.kakao_auth import exchange_code_for_token, fetch_kakao_profile
+from src.application.session import create_session_token
+from src.adapter.outbound.user_repo import upsert_user, clear_refresh_token, soft_delete_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

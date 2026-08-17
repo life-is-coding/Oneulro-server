@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.dependencies import get_current_user
+from src.core.dependencies import get_current_user
 import asyncio
 
-from src.repositories.weather_repo import (
+from src.adapter.outbound.weather_repo import (
     get_course_weather_destination,
     get_home_weather_destinations,
 )
-from src.services.weather import WeatherServiceError, fetch_weather
+from src.application.weather import WeatherServiceError, fetch_weather
 
 
 router = APIRouter(prefix="/weather", tags=["weather"])

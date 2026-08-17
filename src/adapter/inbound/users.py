@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.dependencies import get_current_user
-from src.repositories.user_repo import get_user, update_user
+from src.core.dependencies import get_current_user
+from src.adapter.outbound.user_repo import get_user, update_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 

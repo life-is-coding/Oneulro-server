@@ -2,8 +2,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.dependencies import get_current_user
-from src.repositories.course_repo import get_saved_courses, save_course, unsave_course, get_course_detail, create_course
+from src.core.dependencies import get_current_user
+from src.adapter.outbound.course_repo import get_saved_courses, save_course, unsave_course, get_course_detail, create_course
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 

@@ -2,9 +2,9 @@ import asyncio
 import json
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Header
-from src.services.tourism_api import fetch_nearby_attractions
-from src.services.session import decode_session_token
-from src.repositories.preset_repo import upsert_preset
+from src.adapter.outbound.tourism_api import fetch_nearby_attractions
+from src.application.session import decode_session_token
+from src.adapter.outbound.preset_repo import upsert_preset
 
 router = APIRouter(prefix="/naeilro", tags=["naeilro"])
 

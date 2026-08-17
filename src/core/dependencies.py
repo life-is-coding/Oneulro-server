@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import Header, HTTPException
 
-from src.services.session import decode_session_token
+from src.application.session import decode_session_token
 
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
