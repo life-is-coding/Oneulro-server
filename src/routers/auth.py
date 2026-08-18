@@ -20,10 +20,11 @@ async def kakao_callback(body: KakaoCallbackRequest):
     profile = await fetch_kakao_profile(token_response["access_token"])
 
     user = upsert_user(
-        kakao_id=profile["kakao_id"],
+        social_id=profile["kakao_id"],
         nickname=profile["nickname"],
         profile_image_url=profile["profile_image_url"],
         refresh_token=token_response.get("refresh_token"),
+        social_provider="KAKAO",
     )
 
     session_token = create_session_token(user)

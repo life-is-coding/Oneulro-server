@@ -18,7 +18,7 @@ def create_session_token(user: dict) -> str:
     now = int(time.time())
     payload = {
         "sub": str(user["user_id"]),
-        "kakao_id": user["kakao_id"],
+        "social_id": user["social_id"],
         "nickname": user["nickname"],
         "profile_image_url": user.get("profile_image_url"),
         "iat": now,

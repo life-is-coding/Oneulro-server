@@ -11,10 +11,13 @@ router = APIRouter(prefix="/search-preset", tags=["search-preset"])
 
 
 class PresetRequest(BaseModel):
+    name: Optional[str] = None
+    departure_station: str
     travel_days: Optional[int] = None
     companion_type: Optional[str] = None
-    budget_range: Optional[str] = None
-    pet_allowed: bool = False
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    pet_mode: Optional[str] = None
     theme_tags: Optional[list[str]] = None
     natural_language_memo: Optional[str] = None
 
@@ -29,11 +32,14 @@ def get_my_preset(user=Depends(get_current_user)):
 def save_my_preset(body: PresetRequest, user=Depends(get_current_user)):
     """코스 조건 저장/수정"""
     data = {
+        "name": body.name,
+        "departure_station": body.departure_station,
         "travel_days": body.travel_days,
         "companion_type": body.companion_type,
-        "budget_range": body.budget_range,
-        "pet_allowed": body.pet_allowed,
-        "theme_tags": json.dumps(body.theme_tags) if body.theme_tags else None,
+        "budget_min": body.budget_min,
+        "budget_max": body.budget_max,
+        "pet_mode": body.pet_mode,
+        "theme_tags": json.dumps(body.theme_tags, ensure_ascii=False) if body.theme_tags else None,
         "natural_language_memo": body.natural_language_memo,
     }
     return upsert_preset(int(user["sub"]), data)

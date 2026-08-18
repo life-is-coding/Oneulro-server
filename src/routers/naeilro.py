@@ -75,9 +75,11 @@ async def list_routes():
 async def recommend_course(
     route_type: str = Query(..., description="루트 타입: 동해안 / 남해안 / 역사문화 / 전국일주"),
     days: int = Query(3, ge=2, le=5, description="여행 일수 (2~5일)"),
+    departure_station: Optional[str] = Query(None, description="출발역 (검색 조건 저장 시 사용)"),
     companion_type: Optional[str] = Query(None),
-    budget_range: Optional[str] = Query(None),
-    pet_allowed: bool = Query(False),
+    budget_min: Optional[int] = Query(None),
+    budget_max: Optional[int] = Query(None),
+    pet_mode: Optional[str] = Query(None),
     theme_tags: Optional[str] = Query(None, description="쉼표 구분 태그 예: 자연,힐링"),
     natural_language_memo: Optional[str] = Query(None),
     authorization: Optional[str] = Header(None),
@@ -94,16 +96,19 @@ async def recommend_course(
             detail=f"지원하지 않는 루트입니다. 가능한 루트: {', '.join(ROUTES.keys())}",
         )
 
-    # 로그인 상태면 검색 조건 자동 저장
-    if authorization and authorization.startswith("Bearer "):
+    # 로그인 상태 + 출발역이 있으면 검색 조건 자동 저장 (departure_station은 NOT NULL이라 없으면 스킵)
+    if authorization and authorization.startswith("Bearer ") and departure_station:
         try:
             payload = decode_session_token(authorization.removeprefix("Bearer "))
             tags = [t.strip() for t in theme_tags.split(",")] if theme_tags else None
             upsert_preset(int(payload["sub"]), {
+                "name": None,
+                "departure_station": departure_station,
                 "travel_days": days,
                 "companion_type": companion_type,
-                "budget_range": budget_range,
-                "pet_allowed": pet_allowed,
+                "budget_min": budget_min,
+                "budget_max": budget_max,
+                "pet_mode": pet_mode,
                 "theme_tags": json.dumps(tags, ensure_ascii=False) if tags else None,
                 "natural_language_memo": natural_language_memo,
             })

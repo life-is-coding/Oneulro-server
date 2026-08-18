@@ -7,28 +7,31 @@ from src.db import engine
 
 
 def upsert_user(
-    kakao_id: str,
+    social_id: str,
     nickname: str,
     profile_image_url: Optional[str],
     refresh_token: Optional[str],
+    social_provider: str = "KAKAO",
 ) -> dict:
     if engine is None:
         raise HTTPException(status_code=503, detail="DB 연결 없음")
 
     sql = text("""
-        INSERT INTO oneulro.users (kakao_id, nickname, profile_image_url, refresh_token)
-        VALUES (:kakao_id, :nickname, :profile_image_url, :refresh_token)
-        ON CONFLICT (kakao_id) DO UPDATE SET
+        INSERT INTO oneulro.app_user (social_provider, social_id, nickname, profile_image_url, refresh_token)
+        VALUES (:social_provider, :social_id, :nickname, :profile_image_url, :refresh_token)
+        ON CONFLICT (social_provider, social_id) DO UPDATE SET
             nickname          = EXCLUDED.nickname,
             profile_image_url = EXCLUDED.profile_image_url,
             refresh_token     = EXCLUDED.refresh_token,
+            updated_at        = CURRENT_TIMESTAMP,
             deleted_at        = NULL
-        RETURNING user_id, kakao_id, nickname, profile_image_url
+        RETURNING user_id, social_provider, social_id, nickname, profile_image_url
     """)
 
     with engine.connect() as conn:
         row = conn.execute(sql, {
-            "kakao_id": kakao_id,
+            "social_provider": social_provider,
+            "social_id": social_id,
             "nickname": nickname,
             "profile_image_url": profile_image_url,
             "refresh_token": refresh_token,
@@ -43,7 +46,7 @@ def get_user(user_id: int) -> Optional[dict]:
         return None
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT user_id, kakao_id, nickname, profile_image_url, created_at FROM oneulro.users WHERE user_id = :user_id AND deleted_at IS NULL"),
+            text("SELECT user_id, social_provider, social_id, nickname, profile_image_url, created_at FROM oneulro.app_user WHERE user_id = :user_id AND deleted_at IS NULL"),
             {"user_id": user_id},
         ).mappings().one_or_none()
     return dict(row) if row else None
@@ -62,7 +65,7 @@ def update_user(user_id: int, nickname: Optional[str], profile_image_url: Option
         params["profile_image_url"] = profile_image_url
     if not sets:
         raise HTTPException(status_code=400, detail="수정할 항목이 없습니다")
-    sql = text(f"UPDATE oneulro.users SET {', '.join(sets)} WHERE user_id = :user_id AND deleted_at IS NULL RETURNING user_id, nickname, profile_image_url")
+    sql = text(f"UPDATE oneulro.app_user SET {', '.join(sets)}, updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND deleted_at IS NULL RETURNING user_id, nickname, profile_image_url")
     with engine.connect() as conn:
         row = conn.execute(sql, params).mappings().one_or_none()
         conn.commit()
@@ -76,7 +79,7 @@ def clear_refresh_token(user_id: int) -> None:
         return
     with engine.connect() as conn:
         conn.execute(
-            text("UPDATE oneulro.users SET refresh_token = NULL WHERE user_id = :user_id"),
+            text("UPDATE oneulro.app_user SET refresh_token = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id"),
             {"user_id": user_id},
         )
         conn.commit()
@@ -87,7 +90,7 @@ def soft_delete_user(user_id: int) -> None:
         raise HTTPException(status_code=503, detail="DB 연결 없음")
     with engine.connect() as conn:
         conn.execute(
-            text("UPDATE oneulro.users SET deleted_at = CURRENT_TIMESTAMP, refresh_token = NULL WHERE user_id = :user_id"),
+            text("UPDATE oneulro.app_user SET deleted_at = CURRENT_TIMESTAMP, refresh_token = NULL WHERE user_id = :user_id"),
             {"user_id": user_id},
         )
         conn.commit()

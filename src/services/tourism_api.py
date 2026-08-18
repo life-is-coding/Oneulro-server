@@ -9,6 +9,14 @@ import redis as redis_lib
 TOUR_API_BASE = "http://apis.data.go.kr/B551011/KorService2"
 CACHE_TTL = 3600  # 1시간
 
+# TourAPI contentTypeId -> 내부 카테고리 코드 (🍚식당/🏞관광지/🛍쇼핑/🛏숙소)
+CONTENT_TYPE_CATEGORY = {
+    12: "ATTRACTION",
+    32: "LODGING",
+    38: "SHOPPING",
+    39: "RESTAURANT",
+}
+
 
 def _get_service_key() -> str:
     # data.go.kr에서 발급된 키는 URL 인코딩된 상태로 제공되므로 디코딩 후 httpx에 위임
@@ -86,6 +94,7 @@ async def fetch_nearby_attractions(
     if isinstance(item_list, dict):
         item_list = [item_list]
 
+    category = CONTENT_TYPE_CATEGORY.get(content_type_id, "ATTRACTION")
     result = [
         {
             "contentid": item.get("contentid"),
@@ -94,6 +103,7 @@ async def fetch_nearby_attractions(
             "image": item.get("firstimage"),
             "mapx": item.get("mapx"),
             "mapy": item.get("mapy"),
+            "category": category,
         }
         for item in item_list
     ]
