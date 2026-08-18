@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from src.core.dependencies import get_current_user
+from src.core.logging import logger
 from src.adapter.outbound.course_repo import get_saved_courses, save_course, unsave_course, get_course_detail, create_course
 
 router = APIRouter(prefix="/courses", tags=["courses"])
@@ -16,6 +17,8 @@ class AttractionItem(BaseModel):
     category: Optional[str] = None
     mapx: Optional[str] = None
     mapy: Optional[str] = None
+    area_cd: Optional[str] = None
+    signgu_cd: Optional[str] = None
 
 
 class DayItem(BaseModel):
@@ -35,10 +38,10 @@ class CreateCourseRequest(BaseModel):
 
 
 @router.post("")
-def create(body: CreateCourseRequest, user=Depends(get_current_user)):
+def create(body: CreateCourseRequest):  # TODO: 로그인 붙으면 user=Depends(get_current_user) 복구
     """추천 코스를 DB에 저장하고 course_id 반환"""
     course_id = create_course(
-        user_id=int(user["sub"]),
+        user_id=1,  # TODO: 테스트 유저 고정값 — 로그인 붙으면 int(user["sub"])로 교체
         title=body.title,
         departure_station=body.departure_station,
         total_days=body.total_days,
@@ -54,8 +57,9 @@ def list_saved_courses(user=Depends(get_current_user)):
 
 
 @router.get("/{course_id}")
-def course_detail(course_id: int, user=Depends(get_current_user)):
+def course_detail(course_id: int):  # TODO: 로그인 붙으면 user=Depends(get_current_user) 복구
     """코스 상세 조회 — 경유역 및 장소 포함"""
+    logger.info(f"코스결과 조회: course_id={course_id}")
     detail = get_course_detail(course_id)
     if not detail:
         raise HTTPException(status_code=404, detail="코스를 찾을 수 없습니다")

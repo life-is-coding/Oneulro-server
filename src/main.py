@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging import RequestLoggingMiddleware
 from src.core.redis import close_redis_client, get_redis_client
-from src.adapter.inbound import auth, courses, naeilro, search_preset, users, weather
+from src.adapter.inbound import auth, courses, naeilro, places, search_preset, users, weather
 from src.adapter.inbound.health import router as health_router
 
 
@@ -38,6 +38,7 @@ app.include_router(health_router        , prefix="/api")    # /api/health/**    
 app.include_router(auth.router          , prefix="/api")    # /api/auth/**          인증 (카카오 OAuth)
 app.include_router(users.router         , prefix="/api")    # /api/users/**         사용자 프로필
 app.include_router(courses.router       , prefix="/api")    # /api/courses/**       여행 코스
+app.include_router(places.router        , prefix="/api")    # /api/places/**        장소 상세
 app.include_router(naeilro.router       , prefix="/api")    # /api/naeilro/**       내일로 추천
 app.include_router(search_preset.router , prefix="/api")    # /api/search-preset/** 검색 프리셋
 app.include_router(weather.router       , prefix="/api")    # /api/weather/**       날씨 조회

@@ -12,7 +12,7 @@ def get_course_detail(course_id: int) -> Optional[dict]:
 
     with engine.connect() as conn:
         course = conn.execute(
-            text("SELECT course_id, user_id, title, departure_station, total_days, status, created_at FROM oneulro.course WHERE course_id = :id"),
+            text("SELECT course_id, user_id, title, departure_station, total_days, 'DONE' AS status, created_at FROM oneulro.course WHERE course_id = :id"),
             {"id": course_id},
         ).mappings().one_or_none()
 
@@ -33,12 +33,13 @@ def get_course_detail(course_id: int) -> Optional[dict]:
         stop_ids = [s["stop_id"] for s in stops]
         places_by_stop: dict = {sid: [] for sid in stop_ids}
 
+        print(f"stop_ids: {stop_ids}")  # Debugging line to check stop_ids
+        print(f"places_by_stop: {places_by_stop}")  # Debugging line to check places_by_stop
+
         if stop_ids:
             rows = conn.execute(
                 text("""
-                    SELECT stop_id, place_id, name, category, address,
-                           ST_X(location::geometry) AS lng,
-                           ST_Y(location::geometry) AS lat,
+                    SELECT stop_id, place_id, name, category, address, lat, lng,
                            pet_allowed, walk_minutes, image_url
                     FROM oneulro.place
                     WHERE stop_id = ANY(:ids)
@@ -102,9 +103,9 @@ def create_course(user_id: int, title: str, departure_station: str, total_days: 
                 conn.execute(
                     text("""
                         INSERT INTO oneulro.place
-                            (stop_id, name, category, address, lat, lng, sequence, image_url)
+                            (stop_id, name, category, address, lat, lng, sequence, image_url, area_cd, signgu_cd)
                         VALUES
-                            (:stop_id, :name, :category, :address, :lat, :lng, :sequence, :image_url)
+                            (:stop_id, :name, :category, :address, :lat, :lng, :sequence, :image_url, :area_cd, :signgu_cd)
                     """),
                     {
                         "stop_id": stop_id,
@@ -115,6 +116,8 @@ def create_course(user_id: int, title: str, departure_station: str, total_days: 
                         "lng": attraction.get("mapx"),
                         "sequence": place_sequence,
                         "image_url": attraction.get("image", ""),
+                        "area_cd": attraction.get("area_cd"),
+                        "signgu_cd": attraction.get("signgu_cd"),
                     },
                 )
 
@@ -122,16 +125,32 @@ def create_course(user_id: int, title: str, departure_station: str, total_days: 
     return course_id
 
 
+def get_place(place_id: int) -> Optional[dict]:
+    """장소 단건 상세 조회"""
+    if engine is None:
+        return None
+    sql = text("""
+        SELECT place_id, stop_id, name, category, address, lat, lng, sequence,
+               image_url, opening_hours, walk_minutes, congestion_score, weather_summary,
+               pet_allowed, indoor_yn, free_yn, area_cd, signgu_cd, created_at, updated_at
+        FROM oneulro.place
+        WHERE place_id = :place_id
+    """)
+    with engine.connect() as conn:
+        row = conn.execute(sql, {"place_id": place_id}).mappings().one_or_none()
+    return dict(row) if row else None
+
+
 def get_saved_courses(user_id: int) -> list[dict]:
     if engine is None:
         return []
     sql = text("""
-        SELECT c.course_id, c.title, c.departure_station, c.total_days, c.status, c.created_at,
-               sc.saved_at
-        FROM oneulro.saved_course sc
-        JOIN oneulro.course c ON c.course_id = sc.course_id
-        WHERE sc.user_id = :user_id
-        ORDER BY sc.saved_at DESC
+        SELECT c.course_id, c.title, c.departure_station, c.total_days, 'DONE' AS status, c.created_at,
+               cb.created_at AS saved_at
+        FROM oneulro.course_bookmark cb
+        JOIN oneulro.course c ON c.course_id = cb.course_id
+        WHERE cb.user_id = :user_id
+        ORDER BY cb.created_at DESC
     """)
     with engine.connect() as conn:
         rows = conn.execute(sql, {"user_id": user_id}).mappings().all()
@@ -142,10 +161,10 @@ def save_course(user_id: int, course_id: int) -> dict:
     if engine is None:
         raise HTTPException(status_code=503, detail="DB 연결 없음")
     sql = text("""
-        INSERT INTO oneulro.saved_course (user_id, course_id)
+        INSERT INTO oneulro.course_bookmark (user_id, course_id)
         VALUES (:user_id, :course_id)
         ON CONFLICT (user_id, course_id) DO NOTHING
-        RETURNING saved_id, saved_at
+        RETURNING course_id, created_at AS saved_at
     """)
     with engine.connect() as conn:
         row = conn.execute(sql, {"user_id": user_id, "course_id": course_id}).mappings().one_or_none()
@@ -159,7 +178,7 @@ def unsave_course(user_id: int, course_id: int) -> None:
     if engine is None:
         raise HTTPException(status_code=503, detail="DB 연결 없음")
     sql = text("""
-        DELETE FROM oneulro.saved_course
+        DELETE FROM oneulro.course_bookmark
         WHERE user_id = :user_id AND course_id = :course_id
     """)
     with engine.connect() as conn:
