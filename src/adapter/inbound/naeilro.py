@@ -8,6 +8,28 @@ from src.adapter.outbound.preset_repo import upsert_preset
 
 router = APIRouter(prefix="/naeilro", tags=["naeilro"])
 
+
+@router.get("/places/nearby")
+async def nearby_places(
+    lat: float = Query(..., description="기준 위도"),
+    lng: float = Query(..., description="기준 경도"),
+    radius: int = Query(3000, ge=100, le=20000, description="검색 반경(m)"),
+    num_of_rows: int = Query(6, ge=1, le=20),
+):
+    """좌표(주로 내일로 혜택역) 주변 관광지 추천 조회 — 관광공사 공공데이터 locationBasedList2 이용"""
+    try:
+        return await fetch_nearby_attractions(
+            map_x=lng,
+            map_y=lat,
+            radius=radius,
+            content_type_id=12,
+            num_of_rows=num_of_rows,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"관광공사 API 호출 실패: {str(e)}")
+
 # 내일로로 이동 가능한 사전 정의 루트
 # TODO: 추후 AI 에이전트가 route_name/구성을 동적으로 생성하도록 대체 예정.
 # 그 전까지 임시 추천 로직에 쓰는 데이터이며, 이 dict 구조(name/description/theme/destinations)를
