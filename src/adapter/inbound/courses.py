@@ -38,10 +38,10 @@ class CreateCourseRequest(BaseModel):
 
 
 @router.post("")
-def create(body: CreateCourseRequest):  # TODO: 로그인 붙으면 user=Depends(get_current_user) 복구
+def create(body: CreateCourseRequest, user=Depends(get_current_user)):
     """추천 코스를 DB에 저장하고 course_id 반환"""
     course_id = create_course(
-        user_id=1,  # TODO: 테스트 유저 고정값 — 로그인 붙으면 int(user["sub"])로 교체
+        user_id=int(user["sub"]),
         title=body.title,
         departure_station=body.departure_station,
         total_days=body.total_days,
@@ -57,9 +57,9 @@ def list_saved_courses(user=Depends(get_current_user)):
 
 
 @router.get("/{course_id}")
-def course_detail(course_id: int):  # TODO: 로그인 붙으면 user=Depends(get_current_user) 복구
+def course_detail(course_id: int, user=Depends(get_current_user)):
     """코스 상세 조회 — 경유역 및 장소 포함"""
-    logger.info(f"코스결과 조회: course_id={course_id}")
+    logger.info(f"코스결과 조회: course_id={course_id}, user_id={user['sub']}")
     detail = get_course_detail(course_id)
     if not detail:
         raise HTTPException(status_code=404, detail="코스를 찾을 수 없습니다")

@@ -21,7 +21,7 @@ def get_course_detail(course_id: int) -> Optional[dict]:
 
         stops = conn.execute(
             text("""
-                SELECT stop_id, day_number, sequence, station_name,
+                SELECT stop_id, day_number, sequence, station_name, lat, lng,
                        train_type, seat_class, arrive_at, depart_at, stay_minutes
                 FROM oneulro.course_stop
                 WHERE course_id = :id
