@@ -127,6 +127,7 @@ async def list_routes():
 async def recommend_course(
     request: Request,
     days: int = Query(3, ge=2, le=5, description="여행 일수 (2~5일)"),
+    departure_station: Optional[str] = Query(None),
     companion_type: Optional[str] = Query(None),
     budget_range: Optional[str] = Query(None),
     pet_allowed: bool = Query(False),
@@ -148,6 +149,7 @@ async def recommend_course(
         payload = get_redis_session(session_id)
         tags = [t.strip() for t in theme_tags.split(",")] if theme_tags else None
         upsert_preset(int(payload["sub"]), {
+            "departure_station": departure_station,
             "travel_days": days,
             "companion_type": companion_type,
             "budget_range": budget_range,

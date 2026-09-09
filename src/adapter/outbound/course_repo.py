@@ -258,6 +258,15 @@ def get_created_courses(user_id: int) -> list[dict]:
         """)).scalar()
 
         start_date_select = "c.start_date::date" if has_start_date else "NULL::date"
+        end_date_select = "c.end_date::date" if "end_date" in {
+            row[0]
+            for row in conn.execute(text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+            """)).all()
+        } else "NULL::date"
         status_select = "c.status" if has_status else "'DONE'"
         visibility_select = "c.visibility" if conn.execute(text("""
             SELECT EXISTS (
@@ -273,6 +282,7 @@ def get_created_courses(user_id: int) -> list[dict]:
                    {status_select} AS status,
                    {visibility_select} AS visibility,
                    {start_date_select} AS start_date,
+                   {end_date_select} AS end_date,
                    c.created_at,
                    c.created_at AS saved_at
             FROM oneulro.course c
