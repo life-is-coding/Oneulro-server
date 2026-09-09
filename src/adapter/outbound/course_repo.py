@@ -11,8 +11,38 @@ def get_course_detail(course_id: int) -> Optional[dict]:
         return None
 
     with engine.connect() as conn:
+        has_status = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'status'
+            )
+        """)).scalar()
+        has_deleted_at = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'deleted_at'
+            )
+        """)).scalar()
+        status_select = "status" if has_status else "'DONE'"
+        has_visibility = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'visibility'
+            )
+        """)).scalar()
+        visibility_select = "visibility" if has_visibility else "'PRIVATE'"
+        deleted_filter = "AND deleted_at IS NULL" if has_deleted_at else ""
         course = conn.execute(
-            text("SELECT course_id, user_id, title, departure_station, total_days, 'DONE' AS status, created_at FROM oneulro.course WHERE course_id = :id"),
+            text(f"SELECT course_id, user_id, title, departure_station, total_days, {status_select} AS status, {visibility_select} AS visibility, created_at FROM oneulro.course WHERE course_id = :id {deleted_filter}"),
             {"id": course_id},
         ).mappings().one_or_none()
 
@@ -32,9 +62,6 @@ def get_course_detail(course_id: int) -> Optional[dict]:
 
         stop_ids = [s["stop_id"] for s in stops]
         places_by_stop: dict = {sid: [] for sid in stop_ids}
-
-        print(f"stop_ids: {stop_ids}")  # Debugging line to check stop_ids
-        print(f"places_by_stop: {places_by_stop}")  # Debugging line to check places_by_stop
 
         if stop_ids:
             rows = conn.execute(
@@ -144,17 +171,237 @@ def get_place(place_id: int) -> Optional[dict]:
 def get_saved_courses(user_id: int) -> list[dict]:
     if engine is None:
         return []
-    sql = text("""
-        SELECT c.course_id, c.title, c.departure_station, c.total_days, 'DONE' AS status, c.created_at,
-               cb.created_at AS saved_at
-        FROM oneulro.course_bookmark cb
-        JOIN oneulro.course c ON c.course_id = cb.course_id
-        WHERE cb.user_id = :user_id
-        ORDER BY cb.created_at DESC
-    """)
     with engine.connect() as conn:
+        has_start_date = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'start_date'
+            )
+        """)).scalar()
+        start_date_select = "c.start_date::date AS start_date," if has_start_date else "NULL::date AS start_date,"
+        has_status = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'status'
+            )
+        """)).scalar()
+        has_deleted_at = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'deleted_at'
+            )
+        """)).scalar()
+        status_select = "c.status" if has_status else "'DONE'"
+        has_visibility = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'visibility'
+            )
+        """)).scalar()
+        visibility_select = "c.visibility" if has_visibility else "'PRIVATE'"
+        deleted_filter = "AND c.deleted_at IS NULL" if has_deleted_at else ""
+        sql = text(f"""
+            SELECT c.course_id, c.title, c.departure_station, c.total_days, {status_select} AS status,
+                   {visibility_select} AS visibility, {start_date_select}
+                   c.created_at, cb.created_at AS saved_at
+            FROM oneulro.course_bookmark cb
+            JOIN oneulro.course c ON c.course_id = cb.course_id
+            WHERE cb.user_id = :user_id
+              {deleted_filter}
+            ORDER BY cb.created_at DESC
+        """)
         rows = conn.execute(sql, {"user_id": user_id}).mappings().all()
     return [dict(r) for r in rows]
+
+
+def get_created_courses(user_id: int) -> list[dict]:
+    """내가 생성한 코스를 최신순으로 조회한다."""
+    if engine is None:
+        return []
+
+    with engine.connect() as conn:
+        has_start_date = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'start_date'
+            )
+        """)).scalar()
+        has_status = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'status'
+            )
+        """)).scalar()
+        has_deleted_at = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'deleted_at'
+            )
+        """)).scalar()
+
+        start_date_select = "c.start_date::date" if has_start_date else "NULL::date"
+        status_select = "c.status" if has_status else "'DONE'"
+        visibility_select = "c.visibility" if conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+                  AND column_name = 'visibility'
+            )
+        """)).scalar() else "'PRIVATE'"
+        deleted_filter = "AND c.deleted_at IS NULL" if has_deleted_at else ""
+        rows = conn.execute(text(f"""
+            SELECT c.course_id, c.title, c.departure_station, c.total_days,
+                   {status_select} AS status,
+                   {visibility_select} AS visibility,
+                   {start_date_select} AS start_date,
+                   c.created_at,
+                   c.created_at AS saved_at
+            FROM oneulro.course c
+            WHERE c.user_id = :user_id
+              {deleted_filter}
+            ORDER BY c.created_at DESC
+        """), {"user_id": user_id}).mappings().all()
+
+    return [dict(row) for row in rows]
+
+
+def get_liked_courses(user_id: int) -> list[dict]:
+    """사용자가 좋아요를 누른 공개 코스를 최신 좋아요순으로 조회한다."""
+    if engine is None:
+        return []
+
+    with engine.connect() as conn:
+        has_course_like = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course_like'
+            )
+        """)).scalar()
+        if not has_course_like:
+            raise HTTPException(status_code=501, detail="course_like 테이블이 필요합니다")
+
+        columns = {
+            row[0]
+            for row in conn.execute(text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+            """)).all()
+        }
+        start_date_select = "c.start_date::date" if "start_date" in columns else "NULL::date"
+        status_select = "c.status" if "status" in columns else "'DONE'"
+        visibility_select = "c.visibility" if "visibility" in columns else "'PRIVATE'"
+        visibility_filter = "AND c.visibility = 'PUBLIC'" if "visibility" in columns else ""
+        deleted_filter = "AND c.deleted_at IS NULL" if "deleted_at" in columns else ""
+
+        rows = conn.execute(text(f"""
+            SELECT c.course_id, c.title, c.departure_station, c.total_days,
+                   {status_select} AS status,
+                   {visibility_select} AS visibility,
+                   {start_date_select} AS start_date,
+                   c.created_at,
+                   cl.created_at AS saved_at
+            FROM oneulro.course_like cl
+            JOIN oneulro.course c ON c.course_id = cl.course_id
+            WHERE cl.user_id = :user_id
+              {visibility_filter}
+              {deleted_filter}
+            ORDER BY cl.created_at DESC
+        """), {"user_id": user_id}).mappings().all()
+
+    return [dict(row) for row in rows]
+
+
+def delete_created_course(user_id: int, course_id: int) -> None:
+    """소유자의 코스를 soft delete한다."""
+    if engine is None:
+        raise HTTPException(status_code=503, detail="DB 연결 없음")
+
+    with engine.begin() as conn:
+        columns = {
+            row[0]
+            for row in conn.execute(text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+            """)).all()
+        }
+        if "deleted_at" not in columns:
+            raise HTTPException(status_code=501, detail="코스 삭제를 위한 deleted_at 컬럼이 필요합니다")
+
+        updated_at_sql = ", updated_at = NOW()" if "updated_at" in columns else ""
+        result = conn.execute(text(f"""
+            UPDATE oneulro.course
+            SET deleted_at = NOW(){updated_at_sql}
+            WHERE course_id = :course_id
+              AND user_id = :user_id
+              AND deleted_at IS NULL
+        """), {"course_id": course_id, "user_id": user_id})
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="삭제할 코스를 찾을 수 없습니다")
+
+
+def update_course_visibility(user_id: int, course_id: int, visibility: str) -> dict:
+    """소유자의 코스 공개 상태를 변경한다."""
+    if visibility not in {"PUBLIC", "PRIVATE"}:
+        raise HTTPException(status_code=422, detail="올바른 공개 상태가 아닙니다")
+    if engine is None:
+        raise HTTPException(status_code=503, detail="DB 연결 없음")
+
+    with engine.begin() as conn:
+        columns = {
+            row[0]
+            for row in conn.execute(text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'oneulro'
+                  AND table_name = 'course'
+            """)).all()
+        }
+        if "visibility" not in columns:
+            raise HTTPException(status_code=501, detail="course.visibility 컬럼이 필요합니다")
+
+        deleted_filter = "AND deleted_at IS NULL" if "deleted_at" in columns else ""
+        updated_at_sql = ", updated_at = NOW()" if "updated_at" in columns else ""
+        row = conn.execute(text(f"""
+            UPDATE oneulro.course
+            SET visibility = :visibility{updated_at_sql}
+            WHERE course_id = :course_id
+              AND user_id = :user_id
+              {deleted_filter}
+            RETURNING course_id, visibility
+        """), {
+            "course_id": course_id,
+            "user_id": user_id,
+            "visibility": visibility,
+        }).mappings().one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="변경할 코스를 찾을 수 없습니다")
+    return dict(row)
 
 
 def save_course(user_id: int, course_id: int) -> dict:
