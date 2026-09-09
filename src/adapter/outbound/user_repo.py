@@ -7,7 +7,8 @@ from src.db import engine
 
 
 def upsert_user(
-    kakao_id: str,
+    provider: str,
+    social_id: str,
     nickname: str,
     profile_image_url: Optional[str],
     refresh_token: Optional[str],
@@ -17,18 +18,19 @@ def upsert_user(
 
     sql = text("""
         INSERT INTO oneulro.app_user (social_provider, social_id, nickname, profile_image_url, refresh_token)
-        VALUES ('KAKAO', :kakao_id, :nickname, :profile_image_url, :refresh_token)
+        VALUES (:provider, :social_id, :nickname, :profile_image_url, :refresh_token)
         ON CONFLICT (social_provider, social_id) DO UPDATE SET
             nickname          = EXCLUDED.nickname,
             profile_image_url = EXCLUDED.profile_image_url,
-            refresh_token     = EXCLUDED.refresh_token,
+            refresh_token     = COALESCE(EXCLUDED.refresh_token, oneulro.app_user.refresh_token),
             deleted_at        = NULL
-        RETURNING user_id, social_id AS kakao_id, nickname, profile_image_url
+        RETURNING user_id, social_provider, social_id, nickname, profile_image_url
     """)
 
     with engine.connect() as conn:
         row = conn.execute(sql, {
-            "kakao_id": kakao_id,
+            "provider": provider,
+            "social_id": social_id,
             "nickname": nickname,
             "profile_image_url": profile_image_url,
             "refresh_token": refresh_token,
@@ -43,7 +45,7 @@ def get_user(user_id: int) -> Optional[dict]:
         return None
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT user_id, social_id AS kakao_id, nickname, profile_image_url, created_at FROM oneulro.app_user WHERE user_id = :user_id AND deleted_at IS NULL"),
+            text("SELECT user_id, social_provider, social_id, nickname, profile_image_url, created_at FROM oneulro.app_user WHERE user_id = :user_id AND deleted_at IS NULL"),
             {"user_id": user_id},
         ).mappings().one_or_none()
     return dict(row) if row else None
