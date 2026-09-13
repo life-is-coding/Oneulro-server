@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from sqlalchemy import text
@@ -90,7 +91,7 @@ def get_course_detail(course_id: int) -> Optional[dict]:
     }
 
 
-def create_course(user_id: int, title: str, departure_station: str, total_days: int, days: list) -> int:
+def create_course(user_id: int, title: str, departure_station: str, total_days: int, theme_tags: list[str], days: list) -> int:
     """코스 + 경유역 + 장소를 DB에 저장하고 course_id 반환"""
     if engine is None:
         raise HTTPException(status_code=503, detail="DB 연결 없음")
@@ -98,11 +99,11 @@ def create_course(user_id: int, title: str, departure_station: str, total_days: 
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-                INSERT INTO oneulro.course (user_id, title, departure_station, total_days)
-                VALUES (:user_id, :title, :departure_station, :total_days)
+                INSERT INTO oneulro.course (user_id, title, departure_station, total_days, theme_tags)
+                VALUES (:user_id, :title, :departure_station, :total_days, CAST(:theme_tags AS jsonb))
                 RETURNING course_id
             """),
-            {"user_id": user_id, "title": title, "departure_station": departure_station, "total_days": total_days},
+            {"user_id": user_id, "title": title, "departure_station": departure_station, "total_days": total_days, "theme_tags": json.dumps(theme_tags, ensure_ascii=False)},
         ).one()
         course_id = row[0]
 

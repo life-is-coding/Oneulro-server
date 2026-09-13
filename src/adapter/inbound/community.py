@@ -32,9 +32,9 @@ def get_optional_user_id(request: Request) -> Optional[int]:
 
 
 @router.get("/courses")
-def community_courses(request: Request, sort: Literal["latest", "rating", "likes", "views"] = "latest"):
+def community_courses(request: Request, sort: Literal["latest", "rating", "likes", "views"] = "latest", theme: Optional[str] = None):
     """커뮤니티 코스 목록 조회"""
-    return list_community_courses(sort, get_optional_user_id(request))
+    return list_community_courses(sort, get_optional_user_id(request), theme)
 
 
 @router.get("/courses/best")

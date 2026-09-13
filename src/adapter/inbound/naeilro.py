@@ -6,12 +6,14 @@ from src.adapter.outbound.tourism_api import fetch_nearby_attractions
 from src.application.session import get_redis_session
 from src.adapter.outbound.preset_repo import upsert_preset
 from src.core.config import get_settings
+from src.adapter.outbound.place_bookmark_repo import attach_internal_places
 
 router = APIRouter(prefix="/naeilro", tags=["naeilro"])
 
 
 @router.get("/places/nearby")
 async def nearby_places(
+    request: Request,
     lat: float = Query(..., description="기준 위도"),
     lng: float = Query(..., description="기준 경도"),
     radius: int = Query(3000, ge=100, le=20000, description="검색 반경(m)"),
@@ -19,13 +21,20 @@ async def nearby_places(
 ):
     """좌표(주로 내일로 혜택역) 주변 관광지 추천 조회 — 관광공사 공공데이터 locationBasedList2 이용"""
     try:
-        return await fetch_nearby_attractions(
+        attractions = await fetch_nearby_attractions(
             map_x=lng,
             map_y=lat,
             radius=radius,
             content_type_id=12,
             num_of_rows=num_of_rows,
         )
+        user_id = None
+        try:
+            session_id = request.cookies.get(get_settings().SESSION_COOKIE_NAME)
+            user_id = int(get_redis_session(session_id)["sub"]) if session_id else None
+        except Exception:
+            pass
+        return attach_internal_places(attractions, user_id)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:

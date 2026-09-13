@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 
 from src.adapter.outbound.course_repo import get_course_detail
+from src.adapter.outbound.notification_repo import create_notification
 from src.db import engine
 
 CommunitySort = Literal["latest", "rating", "likes", "views"]
@@ -118,6 +119,7 @@ def _course_select_sql(conn, viewer_user_id: Optional[int], sort: CommunitySort,
             {like_count_select} AS like_count,
             {rating_count_select} AS rating_count,
             {average_rating_select} AS average_rating,
+            COALESCE(c.theme_tags, '[]'::jsonb) AS theme_tags,
             first_place.image_url AS image_url
         FROM oneulro.course c
         {author_join}
@@ -138,14 +140,14 @@ def _course_select_sql(conn, viewer_user_id: Optional[int], sort: CommunitySort,
     """)
 
 
-def list_community_courses(sort: CommunitySort = "latest", viewer_user_id: Optional[int] = None) -> list[dict]:
+def list_community_courses(sort: CommunitySort = "latest", viewer_user_id: Optional[int] = None, theme: Optional[str] = None) -> list[dict]:
     if engine is None:
         return []
 
     with engine.connect() as conn:
         rows = conn.execute(
-            _course_select_sql(conn, viewer_user_id, sort),
-            {"viewer_user_id": viewer_user_id},
+            _course_select_sql(conn, viewer_user_id, sort, where_clause="c.theme_tags ? :theme" if theme else ""),
+            {"viewer_user_id": viewer_user_id, "theme": theme},
         ).mappings().all()
 
     return [dict(row) for row in rows]
@@ -246,7 +248,8 @@ def toggle_course_like(course_id: int, user_id: int) -> dict:
             )
         """
         exists = conn.execute(text(exists_sql), {"course_id": course_id}).scalar()
-        if not exists:
+        course = conn.execute(text("SELECT user_id, title FROM oneulro.course WHERE course_id = :course_id"), {"course_id": course_id}).mappings().one_or_none()
+        if not exists or not course:
             raise HTTPException(status_code=404, detail="코스를 찾을 수 없습니다")
 
         deleted = conn.execute(text("""
@@ -269,6 +272,8 @@ def toggle_course_like(course_id: int, user_id: int) -> dict:
             WHERE course_id = :course_id
         """), {"course_id": course_id}).scalar()
 
+    if liked and int(course["user_id"]) != user_id:
+        create_notification(int(course["user_id"]), "community", "내 코스에 좋아요가 추가됐어요", course["title"], "course", course_id, f"course:{course_id}:liked-by:{user_id}")
     return {"liked": liked, "like_count": like_count}
 
 
@@ -297,7 +302,8 @@ def rate_course(course_id: int, user_id: int, rating: int) -> dict:
             )
         """
         exists = conn.execute(text(exists_sql), {"course_id": course_id}).scalar()
-        if not exists:
+        course = conn.execute(text("SELECT user_id, title FROM oneulro.course WHERE course_id = :course_id"), {"course_id": course_id}).mappings().one_or_none()
+        if not exists or not course:
             raise HTTPException(status_code=404, detail="코스를 찾을 수 없습니다")
 
         conn.execute(text("""
@@ -315,4 +321,6 @@ def rate_course(course_id: int, user_id: int, rating: int) -> dict:
             WHERE course_id = :course_id
         """), {"course_id": course_id}).mappings().one()
 
+    if int(course["user_id"]) != user_id:
+        create_notification(int(course["user_id"]), "community", "내 코스에 별점이 등록됐어요", f"{course['title']} · {rating}점", "course", course_id, f"course:{course_id}:rating-by:{user_id}")
     return {"my_rating": rating, **dict(stats)}

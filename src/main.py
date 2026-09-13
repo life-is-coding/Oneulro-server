@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging import RequestLoggingMiddleware
 from src.core.redis import close_redis_client, get_redis_client
-from src.adapter.inbound import auth, community, courses, naeilro, places, search_preset, users, weather
+from src.adapter.inbound import auth, community, courses, naeilro, notifications, places, posts, search_preset, users, weather
 from src.adapter.inbound.health import router as health_router
 
 
@@ -43,3 +43,5 @@ app.include_router(places.router        , prefix="/api")    # /api/places/**    
 app.include_router(naeilro.router       , prefix="/api")    # /api/naeilro/**       내일로 추천
 app.include_router(search_preset.router , prefix="/api")    # /api/search-preset/** 검색 프리셋
 app.include_router(weather.router       , prefix="/api")    # /api/weather/**       날씨 조회
+app.include_router(posts.router         , prefix="/api")    # /api/posts/**         커뮤니티 게시글
+app.include_router(notifications.router , prefix="/api")    # /api/notifications/** 실제 알림

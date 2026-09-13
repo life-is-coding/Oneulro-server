@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.dependencies import get_current_user
 from src.core.logging import logger
@@ -15,6 +15,7 @@ from src.adapter.outbound.course_repo import (
     unsave_course,
     update_course_visibility,
 )
+from src.adapter.outbound.notification_repo import create_notification
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
@@ -44,6 +45,7 @@ class CreateCourseRequest(BaseModel):
     title: str
     departure_station: str
     total_days: int
+    theme_tags: list[str] = Field(default_factory=list)
     days: list[DayItem]
 
 
@@ -59,7 +61,12 @@ def create(body: CreateCourseRequest, user=Depends(get_current_user)):
         title=body.title,
         departure_station=body.departure_station,
         total_days=body.total_days,
+        theme_tags=body.theme_tags,
         days=[d.model_dump() for d in body.days],
+    )
+    create_notification(
+        int(user["sub"]), "travel", "새 여행 코스가 완성됐어요",
+        body.title, "owned_course", course_id, f"course:{course_id}:created",
     )
     return {"course_id": course_id}
 
